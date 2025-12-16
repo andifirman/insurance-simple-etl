@@ -48,61 +48,32 @@ def generate_npr_ratio(cf_df, assumptions_df, sum_col='NPR_Ratio', contract_col=
 
     cf_df['NPR_Ratio'] = cf_df.apply(lookup_npr, axis=1)
     return cf_df
-      
-      
+
+
 def generate_probability_of_inforce(
-    cf_df, 
-    cancel_col='Cancellation_Ratio', 
-    output_col='Probability_of_Inforce', 
-    icg_col='ICG', 
+    df,
+    cancel_col='Cancellation_Ratio',
+    output_col='Probability_of_Inforce',
+    icg_col='ICG',
     incurred_col='#Incurred'
 ):
-    # Kolom output
-    cf_df[output_col] = 0.0
+    df = df.copy()
 
-    # Sort utama
-    cf_df = cf_df.sort_values(by=[icg_col, incurred_col]).reset_index(drop=True)
+    df = df.sort_values([icg_col, incurred_col])
 
-    # Loop tiap ICG
-    for icg in cf_df[icg_col].unique():
+    df[output_col] = 1.0
 
-        # Index asli (di cf_df) untuk ICG tersebut
-        idx_list = cf_df.index[cf_df[icg_col] == icg].tolist()
-
-        prob_list = []
-
-        # Loop berdasarkan posisi urut
-        for pos, real_idx in enumerate(idx_list):
-
-            row = cf_df.loc[real_idx]
-
-            cancel_ratio = row.get(cancel_col, 0)
-            if cancel_ratio is None or pd.isna(cancel_ratio):
-                cancel_ratio = 0
-
-            incurred_val = row.get(incurred_col, 0)
-
-            # Logic probability
-            if pos == 0:
-                # First record
-                if incurred_val == 1:
-                    prob = 1.0
-                else:
-                    prob = 1.0 * (1 - cancel_ratio)
+    for icg, g in df.groupby(icg_col):
+        probs = []
+        for i, row in g.iterrows():
+            if not probs:
+                probs.append(1.0)
             else:
-                prev_prob = prob_list[-1]
-                if incurred_val == 1:
-                    prob = 1.0
-                else:
-                    prob = prev_prob * (1 - cancel_ratio)
+                probs.append(probs[-1] * (1 - row[cancel_col]))
 
-            prob_list.append(prob)
+        df.loc[g.index, output_col] = probs
 
-            # Update ke cf_df pakai index asli
-            cf_df.loc[real_idx, output_col] = prob
-
-    return cf_df
-
+    return df
 
 
 

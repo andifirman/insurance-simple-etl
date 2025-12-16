@@ -12,7 +12,11 @@ from src.cashflow.function_date import *
 from src.cashflow.function_cf_generator import *
 
 
-def build_cf_gen(all_sheets_dict):
+def build_cf_gen(all_sheets_dict, years_forward: int):
+    """
+    Build Cashflow Projection (CF_Gen)
+    years_forward = jumlah tahun ke depan (user input)
+    """
 
     # =============================
     # 1. LOAD TEMPLATE + VALIDATION
@@ -24,13 +28,7 @@ def build_cf_gen(all_sheets_dict):
     if df_valuation is None:
         raise ValueError("Sheet 'ValuationDate' tidak ditemukan.")
 
-    try:
-        valuation_date = get_valuation_date(df_valuation)
-    except:
-        raise ValueError(f"Tidak bisa parse valuation date: {valuation_date}")
-
-    cf['Valuation'] = valuation_date
-
+    valuation_date = get_valuation_date(df_valuation)
 
     # --- Load ICG ---
     df_icg = all_sheets_dict.get('ICG')
@@ -38,33 +36,41 @@ def build_cf_gen(all_sheets_dict):
         raise ValueError("Sheet 'ICG' tidak ditemukan.")
 
     cf['ICG'] = df_icg['ICG']
+    cf['Valuation'] = valuation_date
 
     # =============================
-    # 2. PARSE ICG (COHORT/CONTRACT/PORTFOLIO)
+    # 2. PARSE ICG
     # =============================
     parsed = cf['ICG'].apply(extract_icg_values)
+
     cf['Cohort'] = (
-    parsed.apply(lambda x: x[0])
-        .pipe(pd.to_numeric, errors='coerce')  # jadikan numerik
-        .astype('Int64')                       # hilangkan .0
-        .astype(str)                           # jadikan string
+        parsed.apply(lambda x: x[0])
+              .pipe(pd.to_numeric, errors='coerce')
+              .astype('Int64')
+              .astype(str)
     )
     cf['Contract']  = parsed.apply(lambda x: x[1])
     cf['Portfolio'] = parsed.apply(lambda x: x[2])
 
-    # Override valuation date repeated
-    cf['Valuation'] = [valuation_date] * len(df_icg)
+    # =============================
+    # 3. INCURRED SEQUENCE (NEW LOGIC)
+    # =============================
+    cf = generate_incurred_sequence(
+        cf,
+        years_forward=years_forward,
+        icg_col='ICG',
+        target_col='#Incurred'
+    )
 
+    cf = generate_incurred_date(
+        cf,
+        valuation_dt=pd.to_datetime(valuation_date),
+        incurred_col='#Incurred',
+        output_col='Incurred'
+    )
 
     # =============================
-    # 3. INCURRED SEQUENCE + DATES
-    # =============================
-    cf = generate_incurred_sequence(cf, output_path="data/processed/CF_Gen.xlsx")
-    cf = generate_incurred_date(cf, valuation_dt=pd.to_datetime(valuation_date))
-
-
-    # =============================
-    # 4. EXPECTED CF (PREMIUM, COMMISSION, ACQUISITION)
+    # 4. EXPECTED CF
     # =============================
     expected_cf = all_sheets_dict.get('Expected_CF')
     if expected_cf is None:
@@ -76,17 +82,22 @@ def build_cf_gen(all_sheets_dict):
             sum_col=col,
             return_formatted=True,
             ICG=row['ICG'],
-            Incurred=row['Incurred']
+            Incurred=row['#Incurred']
         )
 
-    cf['Expected_Premium']    = cf.apply(lambda r: apply_expected(r, 'Expected_Premium'), axis=1)
-    cf['Expected_Commission'] = cf.apply(lambda r: apply_expected(r, 'Expected_Commission'), axis=1)
-
-    cf['Expected_Acquisition'] = cf.apply(
-        lambda r: apply_expected(r, 'Expected_Acquisition') if r['Contract'] == 'IC' else 0,
-        axis=1
+    cf['Expected_Premium'] = cf.apply(
+        lambda r: apply_expected(r, 'Expected_Premium'), axis=1
     )
 
+    cf['Expected_Commission'] = cf.apply(
+        lambda r: apply_expected(r, 'Expected_Commission'), axis=1
+    )
+
+    cf['Expected_Acquisition'] = cf.apply(
+        lambda r: apply_expected(r, 'Expected_Acquisition')
+        if r['Contract'] == 'IC' else 0,
+        axis=1
+    )
 
     # =============================
     # 5. EARNED CF
@@ -101,12 +112,16 @@ def build_cf_gen(all_sheets_dict):
             sum_col=col,
             return_formatted=True,
             ICG=row['ICG'],
-            Incurred=row['Incurred']
+            Incurred=row['#Incurred']
         )
 
-    cf['Earned_Premium']     = cf.apply(lambda r: apply_earned(r, 'Earned_Premium'), axis=1)
-    cf['Earned_Commission']  = cf.apply(lambda r: apply_earned(r, 'Earned_Commission'), axis=1)
+    cf['Earned_Premium'] = cf.apply(
+        lambda r: apply_earned(r, 'Earned_Premium'), axis=1
+    )
 
+    cf['Earned_Commission'] = cf.apply(
+        lambda r: apply_earned(r, 'Earned_Commission'), axis=1
+    )
 
     # =============================
     # 6. ASSUMPTIONS JOIN
@@ -116,26 +131,30 @@ def build_cf_gen(all_sheets_dict):
         raise ValueError("Sheet 'Assumptions' tidak ditemukan.")
 
     assumption_cols = [
-        'Loss_Ratio', 'Risk_Adjustment_Ratio', 'PME_Ratio', 'ULAE_Ratio',
+        'Loss_Ratio', 'Risk_Adjustment_Ratio',
+        'PME_Ratio', 'ULAE_Ratio',
         'Cancellation_Ratio', 'Premium_Refund_Ratio'
     ]
 
     for col in assumption_cols:
-        cf[col] = cf['ICG'].apply(lambda x: generate_join_value(x, assumptions_df, 'ICG', col))
-
+        cf[col] = cf['ICG'].apply(
+            lambda x: generate_join_value(x, assumptions_df, 'ICG', col)
+        )
 
     # =============================
-    # 7. PROBABILITY + NPR RATIO
+    # 7. PROBABILITY OF INFORCE
     # =============================
     cf = generate_probability_of_inforce(
         cf,
-        cancel_col='Cancellation_Ratio', 
-        output_col='Probability_of_Inforce', 
-        icg_col='ICG', 
+        cancel_col='Cancellation_Ratio',
+        output_col='Probability_of_Inforce',
+        icg_col='ICG',
         incurred_col='#Incurred'
     )
 
-
+    # =============================
+    # 8. NPR RATIO
+    # =============================
     cf = generate_npr_ratio(
         cf,
         assumptions_df=assumptions_df,
@@ -145,9 +164,8 @@ def build_cf_gen(all_sheets_dict):
         icg_col='ICG'
     )
 
-
     # =============================
-    # 8. EXPECTED PREMIUM/COMMISSION/ACQUISITION
+    # 9. EXPECTED RESULTS
     # =============================
     cf = generate_exp(
         cf,
@@ -177,9 +195,8 @@ def build_cf_gen(all_sheets_dict):
 
     cf['Exp_Acquisition'] = cf['Expected_Acquisition']
 
-
     # =============================
-    # 9. EXPENSE + CLAIM
+    # 10. EXPENSE + CLAIM
     # =============================
     cf = generate_expense_claim(
         cf,
@@ -200,9 +217,8 @@ def build_cf_gen(all_sheets_dict):
         0
     )
 
-
     # =============================
-    # 10. ACTUAL CF
+    # 11. ACTUAL CF
     # =============================
     actual_cf = all_sheets_dict.get('Actual_CF')
     if actual_cf is None:
@@ -225,4 +241,3 @@ def build_cf_gen(all_sheets_dict):
         )
 
     return cf
-  

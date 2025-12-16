@@ -23,26 +23,25 @@ def get_valuation_date(df_valuation):
     raise ValueError("Valuation date not found in ValuationDate sheet")
 
 
+def generate_incurred_date(
+    df,
+    valuation_dt,
+    incurred_col='Incurred',
+    output_col='Incurred_Date'
+):
+    """
+    Excel equivalent:
+    =EOMONTH(DATE(YEAR(Valuation)-1,12,31), Incurred*3)
+    """
 
-def generate_incurred_date(df, valuation_dt=None,
-                           valuation_col='Valuation',
-                           seq_col='#Incurred',
-                           target_col='Incurred'):
+    base_date = pd.Timestamp(
+        year=valuation_dt.year - 1,
+        month=12,
+        day=31
+    )
 
-    df = df.copy()
+    df[output_col] = df[incurred_col].apply(
+        lambda x: base_date + MonthEnd(x * 3)
+    )
 
-    def _calc(row):
-        # choose valuation source
-        val = row.get(valuation_col, valuation_dt)
-        if pd.isna(val):
-            return pd.NaT
-        val = pd.to_datetime(val)
-        base_year = val.year - 1
-        base_date = pd.Timestamp(year=base_year, month=12, day=31)
-        months_to_add = int(row.get(seq_col, 1)) * 3
-        shifted = base_date + pd.DateOffset(months=months_to_add)
-        # EOMONTH -> last day of that month
-        return (shifted + MonthEnd(0)).normalize()
-
-    df[target_col] = df.apply(_calc, axis=1)
     return df
