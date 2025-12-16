@@ -15,7 +15,6 @@ def get_excel_col_letter(col_idx):
     return letters
 
 
-
 def save_csm_gen(csm_dict, output_path):
     file_exists = os.path.exists(output_path)
 

@@ -50,12 +50,12 @@ def save_cf_gen(df, dest_folder='data/processed', output_name='CF_Gen.xlsx'):
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
 
 		# Append data
-    if os.path.exists(output_path):
-        try:
-            df_old = pd.read_excel(output_path, sheet_name="CF")
-            df = pd.concat([df_old, df], ignore_index=True)
-        except:
-            pass
+    # if os.path.exists(output_path):
+    #     try:
+    #         df_old = pd.read_excel(output_path, sheet_name="CF")
+    #         df = pd.concat([df_old, df], ignore_index=True)
+    #     except:
+    #         pass
 
     with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False, sheet_name="CF")
