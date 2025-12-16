@@ -64,7 +64,7 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
 
     cf = generate_incurred_date(
         cf,
-        valuation_dt=pd.to_datetime(valuation_date),
+        valuation_dt=cf['Valuation'].iloc[0],
         incurred_col='#Incurred',
         output_col='Incurred'
     )
@@ -82,7 +82,7 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
             sum_col=col,
             return_formatted=True,
             ICG=row['ICG'],
-            Incurred=row['#Incurred']
+            Incurred=row['Incurred']
         )
 
     cf['Expected_Premium'] = cf.apply(
@@ -112,7 +112,7 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
             sum_col=col,
             return_formatted=True,
             ICG=row['ICG'],
-            Incurred=row['#Incurred']
+            Incurred=row['Incurred']
         )
 
     cf['Earned_Premium'] = cf.apply(
@@ -169,15 +169,15 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
     # =============================
     cf = generate_exp(
         cf,
-        icg_col='ICG',
-        incurred_col='Incurred',
-        valuation_col='Valuation',
-        expected_premium_col='Expected_Premium',
-        prob_inforce_col='Probability_of_Inforce',
-        premium_refund_col='Premium_Refund_Ratio',
-        cancel_col='Cancellation_Ratio',
-        earned_premium_col='Earned_Premium',
-        output_col='Exp_Premium'
+				icg_col='ICG',
+				incurred_col='Incurred',
+				valuation_col='Valuation',
+				expected_premium_col='Expected_Premium',
+				prob_inforce_col='Probability_of_Inforce',
+				premium_refund_col='Premium_Refund_Ratio',
+				cancel_col='Cancellation_Ratio',
+				earned_premium_col='Earned_Premium',
+				output_col='Exp_Premium'
     )
 
     cf = generate_exp(

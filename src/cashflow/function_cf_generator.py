@@ -88,8 +88,10 @@ def generate_exp(cf_df,
                  premium_refund_col='Premium_Refund_Ratio',
                  cancel_col='Cancellation_Ratio',
                  earned_premium_col='Earned_Premium',
-                 output_col='Output_Col'):
-
+                 output_col='Exp_Premium'):
+		
+    df = cf_df.copy()
+      
     numeric_cols = [
         expected_premium_col,
         prob_inforce_col,
@@ -99,31 +101,38 @@ def generate_exp(cf_df,
     ]
 
     for c in numeric_cols:
-        cf_df[c] = pd.to_numeric(cf_df[c], errors='coerce').fillna(0)
+        df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
 
-    cf_df[incurred_col] = pd.to_datetime(cf_df[incurred_col], errors='coerce')
-    cf_df[valuation_col] = pd.to_datetime(cf_df[valuation_col], errors='coerce')
+    df[incurred_col] = pd.to_datetime(df[incurred_col], errors='coerce')
+    df[valuation_col] = pd.to_datetime(df[valuation_col], errors='coerce')
 
-    cf_df = cf_df.sort_values(by=[icg_col, incurred_col]).reset_index(drop=True)
+    df = df.sort_values(by=[icg_col, incurred_col]).reset_index(drop=True)
 
-    cf_df[output_col] = 0.0  
-    for icg in cf_df[icg_col].unique():
-        mask = cf_df[icg_col] == icg
-        sub_df = cf_df.loc[mask].copy()
-        cum_earned = sub_df[earned_premium_col][::-1].cumsum()[::-1] 
+    df[output_col] = 0.0  
+    for icg, g in df.groupby(icg_col):
+        # cumulative earned premium dari belakang (future exposure)
+        cum_earned = g[earned_premium_col][::-1].cumsum()[::-1]
 
-        for idx, row in sub_df.iterrows():
+        for idx in g.index:
+            row = df.loc[idx]
+
+            # PAST CF (<= valuation)
             if row[incurred_col] <= row[valuation_col]:
-                cf_df.loc[idx, output_col] = row[expected_premium_col]
+                df.loc[idx, output_col] = row[expected_premium_col]
+
+            # FUTURE CF (> valuation)
             else:
-                cf_df.loc[idx, output_col] = - (
-                    row[prob_inforce_col] * row[premium_refund_col] * row[cancel_col] * cum_earned.loc[idx]
+                df.loc[idx, output_col] = - (
+                    row[prob_inforce_col]
+                    * row[premium_refund_col]
+                    * row[cancel_col]
+                    * cum_earned.loc[idx]
                 )
 
-    cf_df[incurred_col] = cf_df[incurred_col].dt.strftime('%d-%b-%Y')
-    cf_df[valuation_col] = cf_df[valuation_col].dt.strftime('%d-%b-%Y')
+    df[incurred_col] = df[incurred_col].dt.strftime('%d-%b-%Y')
+    df[valuation_col] = df[valuation_col].dt.strftime('%d-%b-%Y')
 
-    return cf_df
+    return df
   
 
 def generate_expense_claim(cf_df,

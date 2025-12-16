@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 
+
+
 def generate_incurred_sequence(
     df,
     years_forward: int,
