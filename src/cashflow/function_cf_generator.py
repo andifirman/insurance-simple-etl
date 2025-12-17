@@ -89,6 +89,11 @@ def generate_exp(
 ):
 
     df = df.copy()
+    
+    df[incurred_col] = pd.to_datetime(df[incurred_col], errors='coerce')
+    df[valuation_col] = pd.to_datetime(df[valuation_col], errors='coerce')
+
+    
     df[output_col] = 0.0
 
     for c in [
@@ -120,8 +125,8 @@ def generate_exp(
                     * sum_expected
                 )
 
-    # df[incurred_col] = df[incurred_col].dt.strftime('%d-%b-%Y')
-    # df[valuation_col] = df[valuation_col].dt.strftime('%d-%b-%Y')
+    df[incurred_col] = df[incurred_col].dt.strftime('%d-%b-%Y')
+    df[valuation_col] = df[valuation_col].dt.strftime('%d-%b-%Y')
 
     return df
 
