@@ -1,5 +1,4 @@
 # Extract step
-
 import pandas as pd
 
 def load_input_excel(path):

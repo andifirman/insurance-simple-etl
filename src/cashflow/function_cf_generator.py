@@ -76,63 +76,73 @@ def generate_probability_of_inforce(
     return df
 
 
+def generate_exp(
+    df,
+    icg_col,
+    incurred_col,
+    valuation_col,
+    expected_col,
+    earned_col,
+    prob_inforce_col,
+    premium_refund_col,
+    cancel_col,
+    output_col
+):
+    """
+    Excel-parity version:
+    IF Incurred <= Valuation:
+        Expected
+    ELSE:
+        - Prob * Refund * Cancel * SUM(Earned[row : last_row_per_ICG])
+    """
 
+    df = df.copy()
+    df[output_col] = 0.0
 
-
-def generate_exp(cf_df,
-                 icg_col='ICG',
-                 incurred_col='Incurred',
-                 valuation_col='Valuation',
-                 expected_premium_col='Expected_Premium',
-                 prob_inforce_col='Probability_of_Inforce',
-                 premium_refund_col='Premium_Refund_Ratio',
-                 cancel_col='Cancellation_Ratio',
-                 earned_premium_col='Earned_Premium',
-                 output_col='Exp_Premium'):
-		
-    df = cf_df.copy()
-      
+    # pastikan numerik
     numeric_cols = [
-        expected_premium_col,
+        expected_col,
+        earned_col,
         prob_inforce_col,
         premium_refund_col,
-        cancel_col,
-        earned_premium_col
+        cancel_col
     ]
-
     for c in numeric_cols:
         df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
 
-    df[incurred_col] = pd.to_datetime(df[incurred_col], errors='coerce')
-    df[valuation_col] = pd.to_datetime(df[valuation_col], errors='coerce')
+    # loop per ICG (INI PENTING)
+    for icg, g in df.groupby(icg_col, sort=False):
 
-    df = df.sort_values(by=[icg_col, incurred_col]).reset_index(drop=True)
+        g = g.sort_values(incurred_col)
 
-    df[output_col] = 0.0  
-    for icg, g in df.groupby(icg_col):
-        # cumulative earned premium dari belakang (future exposure)
-        cum_earned = g[earned_premium_col][::-1].cumsum()[::-1]
+        # SUM(Ki:K$last) ala Excel
+        earned_sum_from_here = (
+            g[earned_col]
+            .iloc[::-1]
+            .cumsum()
+            .iloc[::-1]
+        )
 
-        for idx in g.index:
+        for idx, sum_earned in zip(g.index, earned_sum_from_here):
             row = df.loc[idx]
 
-            # PAST CF (<= valuation)
             if row[incurred_col] <= row[valuation_col]:
-                df.loc[idx, output_col] = row[expected_premium_col]
-
-            # FUTURE CF (> valuation)
+                df.loc[idx, output_col] = row[expected_col]
             else:
-                df.loc[idx, output_col] = - (
+                df.loc[idx, output_col] = -(
                     row[prob_inforce_col]
                     * row[premium_refund_col]
                     * row[cancel_col]
-                    * cum_earned.loc[idx]
+                    * sum_earned
                 )
 
-    df[incurred_col] = df[incurred_col].dt.strftime('%d-%b-%Y')
-    df[valuation_col] = df[valuation_col].dt.strftime('%d-%b-%Y')
-
     return df
+
+
+
+
+
+
   
 
 def generate_expense_claim(cf_df,

@@ -167,31 +167,38 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
     # =============================
     # 9. EXPECTED RESULTS
     # =============================
+    
+    print(cf.loc[
+				(cf["ICG"] == "#2024#IC-Property"),
+				["Incurred", "Probability_of_Inforce"]
+		].head(12))
+
     cf = generate_exp(
-        cf,
+				cf,
 				icg_col='ICG',
 				incurred_col='Incurred',
 				valuation_col='Valuation',
-				expected_premium_col='Expected_Premium',
+				expected_col='Expected_Premium',
+				earned_col='Earned_Premium',
 				prob_inforce_col='Probability_of_Inforce',
 				premium_refund_col='Premium_Refund_Ratio',
 				cancel_col='Cancellation_Ratio',
-				earned_premium_col='Earned_Premium',
 				output_col='Exp_Premium'
-    )
+		)
+
 
     cf = generate_exp(
-        cf,
-        icg_col='ICG',
-        incurred_col='Incurred',
-        valuation_col='Valuation',
-        expected_premium_col='Expected_Commission',
-        prob_inforce_col='Probability_of_Inforce',
-        premium_refund_col='Premium_Refund_Ratio',
-        cancel_col='Cancellation_Ratio',
-        earned_premium_col='Earned_Premium',
-        output_col='Exp_Commission'
-    )
+				cf,
+				icg_col='ICG',
+				incurred_col='Incurred',
+				valuation_col='Valuation',
+				expected_col='Expected_Commission',
+				earned_col='Earned_Commission',
+				prob_inforce_col='Probability_of_Inforce',
+				premium_refund_col='Premium_Refund_Ratio',
+				cancel_col='Cancellation_Ratio',
+				output_col='Exp_Commission'
+		)
 
     cf['Exp_Acquisition'] = cf['Expected_Acquisition']
 

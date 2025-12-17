@@ -62,22 +62,22 @@ def save_csm_gen(csm_dict, output_path):
                         df[col] = df[col].apply(lambda x: f"{x:,}")  # Format dengan ribuan separator
 
             # Jika sheet kosong, lewati penulisan
-            if df.empty:
-                print(f"Warning: Sheet {sheet_name} is empty. Skipping writing this sheet.")
-                continue
+            # if df.empty:
+            #     print(f"Warning: Sheet {sheet_name} is empty. Skipping writing this sheet.")
+            #     continue
 
-            # Jika file sudah ada, coba gabungkan data lama dan data baru
-            if file_exists:
-                try:
-                    # Baca data lama dari sheet yang ada
-                    df_old = pd.read_excel(output_path, sheet_name=sheet_name)
+            # # Jika file sudah ada, coba gabungkan data lama dan data baru
+            # if file_exists:
+            #     try:
+            #         # Baca data lama dari sheet yang ada
+            #         df_old = pd.read_excel(output_path, sheet_name=sheet_name)
 
-                    # Gabungkan df_old dengan df yang baru, misalnya menggunakan pd.concat
-                    df = pd.concat([df_old, df], ignore_index=True)
+            #         # Gabungkan df_old dengan df yang baru, misalnya menggunakan pd.concat
+            #         df = pd.concat([df_old, df], ignore_index=True)
 
-                except ValueError:
-                    # Jika sheet tidak ada, maka abaikan dan lanjutkan dengan df baru
-                    pass
+            #     except ValueError:
+            #         # Jika sheet tidak ada, maka abaikan dan lanjutkan dengan df baru
+            #         pass
 
             # Tulis dataframe ke excel
             df.to_excel(writer, index=False, sheet_name=sheet_name)
