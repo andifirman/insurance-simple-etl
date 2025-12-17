@@ -82,64 +82,48 @@ def generate_exp(
     incurred_col,
     valuation_col,
     expected_col,
-    earned_col,
     prob_inforce_col,
     premium_refund_col,
     cancel_col,
     output_col
 ):
-    """
-    Excel-parity version:
-    IF Incurred <= Valuation:
-        Expected
-    ELSE:
-        - Prob * Refund * Cancel * SUM(Earned[row : last_row_per_ICG])
-    """
 
     df = df.copy()
     df[output_col] = 0.0
 
-    # pastikan numerik
-    numeric_cols = [
+    for c in [
         expected_col,
-        earned_col,
         prob_inforce_col,
         premium_refund_col,
         cancel_col
-    ]
-    for c in numeric_cols:
+    ]:
         df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
 
-    # loop per ICG (INI PENTING)
     for icg, g in df.groupby(icg_col, sort=False):
 
         g = g.sort_values(incurred_col)
 
-        # SUM(Ki:K$last) ala Excel
-        earned_sum_from_here = (
-            g[earned_col]
-            .iloc[::-1]
-            .cumsum()
-            .iloc[::-1]
-        )
+        expected_series = g[expected_col].values
 
-        for idx, sum_earned in zip(g.index, earned_sum_from_here):
-            row = df.loc[idx]
+        for pos, idx in enumerate(g.index):
+            row = g.loc[idx]
 
             if row[incurred_col] <= row[valuation_col]:
                 df.loc[idx, output_col] = row[expected_col]
             else:
+                sum_expected = expected_series[pos:].sum()
+
                 df.loc[idx, output_col] = -(
                     row[prob_inforce_col]
                     * row[premium_refund_col]
                     * row[cancel_col]
-                    * sum_earned
+                    * sum_expected
                 )
 
+    # df[incurred_col] = df[incurred_col].dt.strftime('%d-%b-%Y')
+    # df[valuation_col] = df[valuation_col].dt.strftime('%d-%b-%Y')
+
     return df
-
-
-
 
 
 
