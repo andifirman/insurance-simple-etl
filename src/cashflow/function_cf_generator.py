@@ -76,57 +76,72 @@ def generate_probability_of_inforce(
     return df
 
 
+# ================================================== #
+def exp_premium_formula_row(
+    incurred,
+    valuation,
+    expected_premium,
+    probability_of_inforce,
+    premium_refund_ratio,
+    cancellation_ratio,
+    earned_premium_sum_range,  # analog SUM(K2:K$105)
+):
+
+    if pd.isna(incurred) or pd.isna(valuation):
+        return 0.0
+
+    if incurred <= valuation:
+        return expected_premium
+
+    return -(
+        probability_of_inforce
+        * premium_refund_ratio
+        * cancellation_ratio
+        * earned_premium_sum_range
+    )
+
+def build_earned_sum_per_icg(earned_cf, icg_col='ICG', earned_premium_col='Earned_Premium'):
+
+    tmp = earned_cf.copy()
+    tmp[earned_premium_col] = pd.to_numeric(tmp[earned_premium_col], errors='coerce').fillna(0.0)
+    return tmp.groupby(icg_col)[earned_premium_col].sum()
+
+
 def generate_exp(
     df,
     icg_col,
     incurred_col,
     valuation_col,
-    expected_col,
-    prob_inforce_col,
-    premium_refund_col,
-    cancel_col,
-    output_col
+    expected_col,          # Expected_Premium / Expected_Commission
+    prob_inforce_col,      # Probability_of_Inforce
+    premium_refund_col,    # Premium_Refund_Ratio
+    cancel_col,            # Cancellation_Ratio
+    earned_sum_per_icg,    # Series: ICG -> SUM(K2:K$105)
+    output_col,            # Exp_Premium / Exp_Commission
 ):
-
     df = df.copy()
-    
-    df[incurred_col] = pd.to_datetime(df[incurred_col], errors='coerce')
-    df[valuation_col] = pd.to_datetime(df[valuation_col], errors='coerce')
 
-    
+    df[incurred_col] = pd.to_datetime(df[incurred_col], errors="coerce")
+    df[valuation_col] = pd.to_datetime(df[valuation_col], errors="coerce")
+
+    for c in [expected_col, prob_inforce_col, premium_refund_col, cancel_col]:
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
+
     df[output_col] = 0.0
 
-    for c in [
-        expected_col,
-        prob_inforce_col,
-        premium_refund_col,
-        cancel_col
-    ]:
-        df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
-
     for icg, g in df.groupby(icg_col, sort=False):
+        earned_sum = float(earned_sum_per_icg.get(icg, 0.0))  # ini = SUM(K2:K$105) utk ICG tsb
 
-        g = g.sort_values(incurred_col)
-
-        expected_series = g[expected_col].values
-
-        for pos, idx in enumerate(g.index):
-            row = g.loc[idx]
-
-            if row[incurred_col] <= row[valuation_col]:
-                df.loc[idx, output_col] = row[expected_col]
-            else:
-                sum_expected = expected_series[pos:].sum()
-
-                df.loc[idx, output_col] = -(
-                    row[prob_inforce_col]
-                    * row[premium_refund_col]
-                    * row[cancel_col]
-                    * sum_expected
-                )
-
-    df[incurred_col] = df[incurred_col].dt.strftime('%d-%b-%Y')
-    df[valuation_col] = df[valuation_col].dt.strftime('%d-%b-%Y')
+        for idx, row in g.iterrows():
+            df.loc[idx, output_col] = exp_premium_formula_row(
+                incurred=row[incurred_col],
+                valuation=row[valuation_col],
+                expected_premium=row[expected_col],
+                probability_of_inforce=row[prob_inforce_col],
+                premium_refund_ratio=row[premium_refund_col],
+                cancellation_ratio=row[cancel_col],
+                earned_premium_sum_range=earned_sum,
+            )
 
     return df
 

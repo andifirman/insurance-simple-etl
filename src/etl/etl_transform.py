@@ -123,6 +123,18 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
         lambda r: apply_earned(r, 'Earned_Commission'), axis=1
     )
 
+		# SUM(K2:K$105) per ICG untuk Premium & Commission
+    earned_sum_per_icg_prem = build_earned_sum_per_icg(
+        earned_cf,
+        icg_col='ICG',
+        earned_premium_col='Earned_Premium',
+    )
+    earned_sum_per_icg_comm = build_earned_sum_per_icg(
+        earned_cf,
+        icg_col='ICG',
+        earned_premium_col='Earned_Commission',
+    )
+
     # =============================
     # 6. ASSUMPTIONS JOIN
     # =============================
@@ -174,29 +186,30 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
 	# 	].head(12))
 
     cf = generate_exp(
-				cf,
-				icg_col='ICG',
-				incurred_col='Incurred',
-				valuation_col='Valuation',
-				expected_col='Expected_Premium',
-				prob_inforce_col='Probability_of_Inforce',
-				premium_refund_col='Premium_Refund_Ratio',
-				cancel_col='Cancellation_Ratio',
-				output_col='Exp_Premium'
-		)
-
+        cf,
+        icg_col='ICG',
+        incurred_col='Incurred',
+        valuation_col='Valuation',
+        expected_col='Expected_Premium',
+        prob_inforce_col='Probability_of_Inforce',
+        premium_refund_col='Premium_Refund_Ratio',
+        cancel_col='Cancellation_Ratio',
+        earned_sum_per_icg=earned_sum_per_icg_prem,
+        output_col='Exp_Premium',
+    )
 
     cf = generate_exp(
-				cf,
-				icg_col='ICG',
-				incurred_col='Incurred',
-				valuation_col='Valuation',
-				expected_col='Expected_Commission',
-				prob_inforce_col='Probability_of_Inforce',
-				premium_refund_col='Premium_Refund_Ratio',
-				cancel_col='Cancellation_Ratio',
-				output_col='Exp_Commission'
-		)
+        cf,
+        icg_col='ICG',
+        incurred_col='Incurred',
+        valuation_col='Valuation',
+        expected_col='Expected_Commission',
+        prob_inforce_col='Probability_of_Inforce',
+        premium_refund_col='Premium_Refund_Ratio',
+        cancel_col='Cancellation_Ratio',
+        earned_sum_per_icg=earned_sum_per_icg_comm,
+        output_col='Exp_Commission',
+    )
 
     cf['Exp_Acquisition'] = cf['Expected_Acquisition']
 
