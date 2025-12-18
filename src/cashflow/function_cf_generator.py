@@ -100,13 +100,13 @@ def exp_premium_formula_row(
     )
 
 def build_earned_sum_per_icg(earned_cf, icg_col='ICG', earned_premium_col='Earned_Premium'):
-
     tmp = earned_cf.copy()
     tmp[earned_premium_col] = pd.to_numeric(tmp[earned_premium_col], errors='coerce').fillna(0.0)
+    
     return tmp.groupby(icg_col)[earned_premium_col].sum()
 
 
-def generate_exp(
+def generate_exp_premium(
     df,
     icg_col,
     incurred_col,
@@ -115,23 +115,42 @@ def generate_exp(
     prob_inforce_col,
     premium_refund_col,
     cancel_col,
-    earned_sum_per_icg,
+    earned_sum_per_icg,  
     output_col,
+    earned_premium_col='Earned_Premium',
 ):
     df = df.copy()
 
     df[incurred_col] = pd.to_datetime(df[incurred_col], errors="coerce")
     df[valuation_col] = pd.to_datetime(df[valuation_col], errors="coerce")
 
-    for c in [expected_col, prob_inforce_col, premium_refund_col, cancel_col]:
+    for c in [expected_col, prob_inforce_col, premium_refund_col, cancel_col, earned_premium_col]:
         df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
 
     df[output_col] = 0.0
 
     for icg, g in df.groupby(icg_col, sort=False):
-        earned_sum = float(earned_sum_per_icg.get(icg, 0.0))
+        # total SUM(K2:K$105) untuk ICG ini (dari helper build_earned_sum_per_icg)
+        total_earned = float(earned_sum_per_icg.get(icg, 0.0))
 
-        for idx, row in g.iterrows():
+        # urutkan baris sama seperti Excel (kalau ada #Incurred)
+        sort_cols = []
+        if '#Incurred' in g.columns:
+            sort_cols.append('#Incurred')
+        sort_cols.append(incurred_col)
+        g = g.sort_values(sort_cols, kind="mergesort")
+
+        # prefix sum Earned_Premium: SUM(K2:K_(pos-1))
+        earned_values = g[earned_premium_col].to_numpy()
+        prefix_sum = 0.0
+
+        for pos, (idx, row) in enumerate(g.iterrows(), start=1):
+            # pos = 1,2,3,... seiring baris CF
+            # Excel: baris pos pakai SUM(K_pos:K$105)
+            # Python: total_earned = SUM(K2:K$105)
+            #         prefix_sum  = SUM(K2:K_(pos-1))
+            earned_sum_range = total_earned - prefix_sum
+
             df.loc[idx, output_col] = exp_premium_formula_row(
                 incurred=row[incurred_col],
                 valuation=row[valuation_col],
@@ -139,12 +158,73 @@ def generate_exp(
                 probability_of_inforce=row[prob_inforce_col],
                 premium_refund_ratio=row[premium_refund_col],
                 cancellation_ratio=row[cancel_col],
-                earned_premium_sum_range=earned_sum,
+                earned_premium_sum_range=earned_sum_range,
             )
+
+            # update prefix untuk baris berikutnya
+            prefix_sum += earned_values[pos - 1]
 
     return df
 
+def generate_exp_commission(
+    df,
+    icg_col,
+    incurred_col,
+    valuation_col,
+    expected_col,
+    prob_inforce_col,
+    premium_refund_col,
+    cancel_col,
+    earned_sum_per_icg,  
+    output_col,
+    earned_premium_col='Earned_Commission',
+):
+    df = df.copy()
 
+    df[incurred_col] = pd.to_datetime(df[incurred_col], errors="coerce")
+    df[valuation_col] = pd.to_datetime(df[valuation_col], errors="coerce")
+
+    for c in [expected_col, prob_inforce_col, premium_refund_col, cancel_col, earned_premium_col]:
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
+
+    df[output_col] = 0.0
+
+    for icg, g in df.groupby(icg_col, sort=False):
+        # total SUM(K2:K$105) untuk ICG ini (dari helper build_earned_sum_per_icg)
+        total_earned = float(earned_sum_per_icg.get(icg, 0.0))
+
+        # urutkan baris sama seperti Excel (kalau ada #Incurred)
+        sort_cols = []
+        if '#Incurred' in g.columns:
+            sort_cols.append('#Incurred')
+        sort_cols.append(incurred_col)
+        g = g.sort_values(sort_cols, kind="mergesort")
+
+        # prefix sum Earned_Premium: SUM(K2:K_(pos-1))
+        earned_values = g[earned_premium_col].to_numpy()
+        prefix_sum = 0.0
+
+        for pos, (idx, row) in enumerate(g.iterrows(), start=1):
+            # pos = 1,2,3,... seiring baris CF
+            # Excel: baris pos pakai SUM(K_pos:K$105)
+            # Python: total_earned = SUM(K2:K$105)
+            #         prefix_sum  = SUM(K2:K_(pos-1))
+            earned_sum_range = total_earned - prefix_sum
+
+            df.loc[idx, output_col] = exp_premium_formula_row(
+                incurred=row[incurred_col],
+                valuation=row[valuation_col],
+                expected_premium=row[expected_col],
+                probability_of_inforce=row[prob_inforce_col],
+                premium_refund_ratio=row[premium_refund_col],
+                cancellation_ratio=row[cancel_col],
+                earned_premium_sum_range=earned_sum_range,
+            )
+
+            # update prefix untuk baris berikutnya
+            prefix_sum += earned_values[pos - 1]
+
+    return df
 
   
 

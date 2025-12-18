@@ -185,7 +185,7 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
 	# 			["Incurred", "Probability_of_Inforce"]
 	# 	].head(12))
 
-    cf = generate_exp(
+    cf = generate_exp_premium(
         cf,
         icg_col='ICG',
         incurred_col='Incurred',
@@ -198,23 +198,24 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
         output_col='Exp_Premium',
     )
 
-    cf = generate_exp(
-        cf,
-        icg_col='ICG',
-        incurred_col='Incurred',
-        valuation_col='Valuation',
-        expected_col='Expected_Commission',
-        prob_inforce_col='Probability_of_Inforce',
-        premium_refund_col='Premium_Refund_Ratio',
-        cancel_col='Cancellation_Ratio',
-        earned_sum_per_icg=earned_sum_per_icg_comm,
-        output_col='Exp_Commission',
-    )
+    cf = generate_exp_commission(
+				cf,
+				icg_col='ICG',
+				incurred_col='Incurred',
+				valuation_col='Valuation',
+				expected_col='Expected_Commission',
+				prob_inforce_col='Probability_of_Inforce',
+				premium_refund_col='Premium_Refund_Ratio',
+				cancel_col='Cancellation_Ratio',
+				earned_sum_per_icg=earned_sum_per_icg_comm,
+				output_col='Exp_Commission',
+				earned_premium_col='Earned_Commission',
+		)
     
     # DEBUG blok di sini
-    icg_test = "#2024#IC-Property"
-    g = cf[cf["ICG"] == icg_test].copy()
-    g = g.sort_values(["#Incurred", "Incurred"], kind="mergesort")
+    # icg_test = "#2024#IC-Property"
+    # g = cf[cf["ICG"] == icg_test].copy()
+    # g = g.sort_values(["#Incurred", "Incurred"], kind="mergesort")
 
     # print("=== DEBUG ICG:", icg_test, "===")
     # print("earned_sum_per_icg_prem[icg_test] =", earned_sum_per_icg_prem[icg_test])
