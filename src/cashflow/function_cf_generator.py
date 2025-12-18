@@ -84,9 +84,8 @@ def exp_premium_formula_row(
     probability_of_inforce,
     premium_refund_ratio,
     cancellation_ratio,
-    earned_premium_sum_range,  # analog SUM(K2:K$105)
+    earned_premium_sum_range,
 ):
-
     if pd.isna(incurred) or pd.isna(valuation):
         return 0.0
 
@@ -112,12 +111,12 @@ def generate_exp(
     icg_col,
     incurred_col,
     valuation_col,
-    expected_col,          # Expected_Premium / Expected_Commission
-    prob_inforce_col,      # Probability_of_Inforce
-    premium_refund_col,    # Premium_Refund_Ratio
-    cancel_col,            # Cancellation_Ratio
-    earned_sum_per_icg,    # Series: ICG -> SUM(K2:K$105)
-    output_col,            # Exp_Premium / Exp_Commission
+    expected_col,
+    prob_inforce_col,
+    premium_refund_col,
+    cancel_col,
+    earned_sum_per_icg,
+    output_col,
 ):
     df = df.copy()
 
@@ -130,7 +129,7 @@ def generate_exp(
     df[output_col] = 0.0
 
     for icg, g in df.groupby(icg_col, sort=False):
-        earned_sum = float(earned_sum_per_icg.get(icg, 0.0))  # ini = SUM(K2:K$105) utk ICG tsb
+        earned_sum = float(earned_sum_per_icg.get(icg, 0.0))
 
         for idx, row in g.iterrows():
             df.loc[idx, output_col] = exp_premium_formula_row(

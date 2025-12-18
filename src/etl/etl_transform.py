@@ -210,6 +210,25 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
         earned_sum_per_icg=earned_sum_per_icg_comm,
         output_col='Exp_Commission',
     )
+    
+    # DEBUG blok di sini
+    icg_test = "#2024#IC-Property"
+    g = cf[cf["ICG"] == icg_test].copy()
+    g = g.sort_values(["#Incurred", "Incurred"], kind="mergesort")
+
+    # print("=== DEBUG ICG:", icg_test, "===")
+    # print("earned_sum_per_icg_prem[icg_test] =", earned_sum_per_icg_prem[icg_test])
+
+    # print(
+    #     g.loc[:, ["#Incurred", "Incurred",
+    #               "Earned_Premium",
+    #               "Expected_Premium",
+    #               "Probability_of_Inforce",
+    #               "Premium_Refund_Ratio",
+    #               "Cancellation_Ratio",
+    #               "Exp_Premium"]]
+    #      .head(8)
+    # )
 
     cf['Exp_Acquisition'] = cf['Expected_Acquisition']
 
@@ -257,5 +276,7 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
             output_col=output_col,
             target_col=target_col
         )
+
+    
 
     return cf
