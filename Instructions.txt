@@ -1,22 +1,4 @@
-INSTRUCTIONS
-1. Untuk menggunakan sistem install terlebih dahulu semua library yang dibutuhkan
-2. Library dapat dilihat pada requirements.txt
-3. Install dengan mengarahkan pada direktori sistem lalu jalankan command berikut
-
-  pip install -r requirements.txt
-
-
-4. Lakukan run sistem dengan command 
-
-  py main.py
-  ATAU
-  python main.py
-
-ANSWERED
-- Kolom Incurred -> EOMONTH (End Of Month). Ini tuh dia dikurangi dulu satu tahun dari valuation date
-                    habis itu geser ke depan 3 bulan (*3 bulan).
-- Kolom Expected_Acquisition -> Itu kan ada kondisi JIKA Contract == IC, berarti untuk RC gimana? Atau
-                                memang kondisinya hanya untuk yang contract nya IC?
-- Kolom Probability_of_Inforce -> Diliat dari formulanya, dia ngacu ke kolom sebelumnya (di atasnya)
-                                  Apakah ada perhitungan sendiri atau memang mulainya dari 
-                                  100% dan diliat dari #Incurred ketika dia 1?
+- SATU PERTANYAAN BUAT MECAHIN DULU INFLASI KASAR (KOLOM IJO): 
+  Untuk Adjusted Inflation (Claim and Expense) itu dia ngacu ke Inflasi Klaim di mana nilainya ditentukan
+  per quarter. Nahh berarti fixed 4 kah? Misal udah sampe ke Quartal 4 (di angka 0.125) apakah dia reset
+  lagi ke 0.5 atau gimana?

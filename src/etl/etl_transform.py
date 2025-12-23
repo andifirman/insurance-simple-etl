@@ -12,7 +12,7 @@ from src.cashflow.function_date import *
 from src.cashflow.function_cf_generator import *
 
 
-def build_cf_gen(all_sheets_dict, years_forward: int):
+def build_cf_gen(all_sheets_dict, years_forward: int, claim_inflation_rate: float, expense_inflation_rate: float):
     """
     Build Cashflow Projection (CF_Gen)
     years_forward = jumlah tahun ke depan (user input)
@@ -179,12 +179,6 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
     # =============================
     # 9. EXPECTED RESULTS
     # =============================
-    
-    # print(cf.loc[
-	# 			(cf["ICG"] == "#2024#IC-Property"),
-	# 			["Incurred", "Probability_of_Inforce"]
-	# 	].head(12))
-
     cf = generate_exp_premium(
         cf,
         icg_col='ICG',
@@ -212,24 +206,6 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
 				earned_premium_col='Earned_Commission',
 		)
     
-    # DEBUG blok di sini
-    # icg_test = "#2024#IC-Property"
-    # g = cf[cf["ICG"] == icg_test].copy()
-    # g = g.sort_values(["#Incurred", "Incurred"], kind="mergesort")
-
-    # print("=== DEBUG ICG:", icg_test, "===")
-    # print("earned_sum_per_icg_prem[icg_test] =", earned_sum_per_icg_prem[icg_test])
-
-    # print(
-    #     g.loc[:, ["#Incurred", "Incurred",
-    #               "Earned_Premium",
-    #               "Expected_Premium",
-    #               "Probability_of_Inforce",
-    #               "Premium_Refund_Ratio",
-    #               "Cancellation_Ratio",
-    #               "Exp_Premium"]]
-    #      .head(8)
-    # )
 
     cf['Exp_Acquisition'] = cf['Expected_Acquisition']
 
@@ -277,7 +253,27 @@ def build_cf_gen(all_sheets_dict, years_forward: int):
             output_col=output_col,
             target_col=target_col
         )
-
+        
+  	# =============================
+    # 12. CLAIM INFLATION
+    # =============================
+    cf = generate_exp_claim_inflation(
+        cf,
+        claim_inflation_rate=claim_inflation_rate,
+        incurred_order_col='#Incurred',
+        base_claim_col='Exp_Claim',
+        output_col='Exp_Claim_Inflation',
+    )
     
+    # =============================
+    # 13. EXPENSE INFLATION
+    # =============================
+    cf = generate_exp_expense_inflation(
+        cf,
+        expense_inflation_rate=expense_inflation_rate,
+        incurred_order_col='#Incurred',
+        base_claim_col='Exp_Expense',
+        output_col='Exp_Expense_Inflation',
+    )
 
     return cf

@@ -17,11 +17,19 @@ def run_app():
   all_sheets = load_input_excel(input_file)
   
   years_forward = int(input("Masukkan jumlah tahun ke depan untuk CF: "))
+  claim_inflation_rate = float(input("Masukkan inflasi klaim (mis. 0.05 untuk 5%): "))
+  expense_inflation_rate = float(input("Masukkan inflasi expense (mis. 0.05 untuk 5%): "))
   
   locked_current_rate_data = extract_locked_current_rate(all_sheets)
   
   # cf = build_cf_gen(all_sheets)
-  cf = build_cf_gen(all_sheets, years_forward=years_forward)
+  cf = build_cf_gen(
+    all_sheets, 
+    years_forward=years_forward, 
+    claim_inflation_rate=claim_inflation_rate, 
+    expense_inflation_rate=expense_inflation_rate
+  )
+  
   out_path = save_cf_gen(cf, dest_folder="data/processed", output_name="CF_Gen.xlsx")
   
   csm_sheets = build_csm(cf, locked_current_rate_data)

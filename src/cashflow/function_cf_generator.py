@@ -281,3 +281,67 @@ def generate_actual(cf_df,
     )
 
     return cf_df
+
+
+def generate_exp_claim_inflation(
+    cf_df,
+    claim_inflation_rate,
+    incurred_order_col='#Incurred',
+    base_claim_col='Exp_Claim',
+    output_col='Exp_Claim_Inflation',
+):
+
+    cf_df = cf_df.copy()
+
+    # Validasi kolom
+    missing = [
+        col
+        for col in [incurred_order_col, base_claim_col]
+        if col not in cf_df.columns
+    ]
+    if missing:
+        raise KeyError(f"Kolom berikut tidak ditemukan di CF_Gen: {missing}")
+
+    # Pastikan numeric
+    incurred_order = pd.to_numeric(cf_df[incurred_order_col], errors="coerce")
+    base_claim = pd.to_numeric(cf_df[base_claim_col], errors="coerce")
+
+    # Faktor inflasi: (1 + r)^(#Incurred - 1)
+    factor = (1.0 + float(claim_inflation_rate)) ** (incurred_order - 1)
+    factor = factor.fillna(1.0)
+
+    cf_df[output_col] = base_claim * factor
+
+    return cf_df
+  
+
+def generate_exp_expense_inflation(
+    cf_df,
+    expense_inflation_rate,
+    incurred_order_col='#Incurred',
+    base_claim_col='Exp_Expense',
+    output_col='Exp_Expense_Inflation',
+):
+
+    cf_df = cf_df.copy()
+
+    # Validasi kolom
+    missing = [
+        col
+        for col in [incurred_order_col, base_claim_col]
+        if col not in cf_df.columns
+    ]
+    if missing:
+        raise KeyError(f"Kolom berikut tidak ditemukan di CF_Gen: {missing}")
+
+    # Pastikan numeric
+    incurred_order = pd.to_numeric(cf_df[incurred_order_col], errors="coerce")
+    base_claim = pd.to_numeric(cf_df[base_claim_col], errors="coerce")
+
+    # Faktor inflasi: (1 + r)^(#Incurred - 1)
+    factor = (1.0 + float(expense_inflation_rate)) ** (incurred_order - 1)
+    factor = factor.fillna(1.0)
+
+    cf_df[output_col] = base_claim * factor
+
+    return cf_df

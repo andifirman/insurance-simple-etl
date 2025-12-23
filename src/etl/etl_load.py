@@ -33,7 +33,8 @@ def save_cf_gen(
         'Expected_Premium', 'Expected_Commission', 'Expected_Acquisition',
         'Earned_Premium', 'Earned_Commission', 'Exp_Premium', 'Exp_Commission',
         'Exp_Acquisition', 'Exp_Expense', 'Exp_Claim', 'Exp_RA', 'Exp_NPR',
-        'Actual_Premium', 'Actual_Commission', 'Actual_Acquisition'
+        'Actual_Premium', 'Actual_Commission', 'Actual_Acquisition', 
+        'Exp_Claim_Inflation', 'Exp_Expense_Inflation'
     ]
 
     ratio_columns = [
