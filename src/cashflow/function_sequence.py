@@ -11,7 +11,7 @@ def generate_incurred_sequence(
 ):
     """
     Generate #Incurred = 1 .. (years_forward * 4)
-    for EACH ICG (stateless, deterministic)
+    for EACH ICG
     """
 
     df = df.copy()

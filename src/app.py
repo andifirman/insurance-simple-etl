@@ -17,8 +17,13 @@ def run_app():
   all_sheets = load_input_excel(input_file)
   
   years_forward = int(input("Masukkan jumlah tahun ke depan untuk CF: "))
-  claim_inflation_rate = float(input("Masukkan inflasi klaim (mis. 0.05 untuk 5%): "))
-  expense_inflation_rate = float(input("Masukkan inflasi expense (mis. 0.05 untuk 5%): "))
+  
+  claim_inflation_percent = float(input("Masukkan inflasi klaim (mis. 5 untuk 5%): "))
+  expense_inflation_percent = float(input("Masukkan inflasi expense (mis. 5 untuk 5%): "))
+  
+  claim_inflation_rate = claim_inflation_percent / 100.0
+  expense_inflation_rate = expense_inflation_percent / 100.0
+  
   
   locked_current_rate_data = extract_locked_current_rate(all_sheets)
   

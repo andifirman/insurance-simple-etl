@@ -198,9 +198,7 @@ def generate_exp_commission_acquisition(csm_expected, all_sheets_dict):
     incurred_values_norm = incurred_values.apply(normalize_csm_incurred_format)
 
     results = []
-
-    # Excel (jika formula-nya): =-Exp_Commission - Exp_Acquisition
-    # sekarang kamu punya comm_val - acq_val; kita sesuaikan ke Excel
+    
     for incurred_norm, icg_value in zip(incurred_values_norm, icg_values):
         try:
             match_idx = incurred_all_sheets_norm[
@@ -369,7 +367,7 @@ def generate_actual_commission_acquisition(csm_actual, all_sheets_dict):
             else:
                 commission_val = actual_commission.loc[match_idx[0]]
                 acquisition_val = actual_acquisition.loc[match_idx[0]]
-                results.append(commission_val - acquisition_val)
+                results.append(-(commission_val + acquisition_val))
 
         except Exception:
             results.append(0)

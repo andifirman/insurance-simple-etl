@@ -82,9 +82,8 @@ def build_csm(all_sheets_dict, locked_current_rate_data):
     csm_expected['RA'] = generate_ra(csm_expected, all_sheets_dict)
     csm_expected['Komisi EOP'] = generate_komisi_eop(csm_expected, all_sheets_dict)
     
-    csm_actual['Premi'] = generate_actual_premium(csm_actual, all_sheets_dict)
     
-     
+    csm_actual['Premi'] = generate_actual_premium(csm_actual, all_sheets_dict)
     csm_actual['Komisi'] = generate_actual_commission_acquisition(csm_actual, all_sheets_dict)
 
 
