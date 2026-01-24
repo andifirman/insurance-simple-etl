@@ -40,7 +40,7 @@ def save_cf_gen(
     ratio_columns = [
         'Loss_Ratio', 'Risk_Adjustment_Ratio', 'PME_Ratio', 'ULAE_Ratio',
         'Cancellation_Ratio', 'Premium_Refund_Ratio', 'NPR_Ratio',
-        'Probability_of_Inforce'
+        'Probability_of_Inforce_at_BoP', 'Inflation_Ratio', 'Inflation_Factor_at_BoP'
     ]
 
     integer_columns = ['#Incurred', 'Cohort']

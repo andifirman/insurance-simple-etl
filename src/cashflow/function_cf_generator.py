@@ -1,4 +1,5 @@
 import pandas as pd
+from pandas.tseries.offsets import MonthEnd
 
 def generate_join_value(lookup_value, df, lookup_col, return_col):
     try:
@@ -72,6 +73,121 @@ def generate_probability_of_inforce(
                 probs.append(probs[-1] * (1 - row[cancel_col]))
 
         df.loc[g.index, output_col] = probs
+
+    return df
+
+
+def generate_probability_of_inforce_at_bop(
+    df,
+    valuation_col='Valuation',
+    incurred_date_col='Incurred',
+    cancel_col='Cancellation_Ratio',
+    output_col='Probability_of_Inforce_at_BoP',
+    icg_col='ICG',
+    incurred_seq_col='#Incurred',
+):
+    """Excel: IF(Incurred<=EOMONTH(Valuation,3),100%,Prev*(1-Cancellation_Ratio))."""
+    df = df.copy()
+
+    df[valuation_col] = pd.to_datetime(df[valuation_col], errors='coerce')
+    df[incurred_date_col] = pd.to_datetime(df[incurred_date_col], errors='coerce')
+    df[cancel_col] = pd.to_numeric(df[cancel_col], errors='coerce').fillna(0.0)
+
+    sort_cols = [icg_col]
+    if incurred_seq_col in df.columns:
+        sort_cols.append(incurred_seq_col)
+    sort_cols.append(incurred_date_col)
+    df = df.sort_values(sort_cols, kind='mergesort')
+
+    df[output_col] = 1.0
+
+    for icg, g in df.groupby(icg_col, sort=False):
+        prev = 1.0
+        for idx, row in g.iterrows():
+            valuation_dt = row[valuation_col]
+            incurred_dt = row[incurred_date_col]
+
+            if pd.isna(valuation_dt) or pd.isna(incurred_dt):
+                val = 0.0
+            else:
+                cutoff = valuation_dt + MonthEnd(3)
+                if incurred_dt <= cutoff:
+                    val = 1.0
+                else:
+                    val = prev * (1 - float(row[cancel_col]))
+
+            df.loc[idx, output_col] = val
+            prev = val
+
+    return df
+
+
+def generate_inflation_ratio(
+    df,
+    annual_inflation_col,
+    valuation_col='Valuation',
+    incurred_date_col='Incurred',
+    output_col='Inflation_Ratio',
+):
+    """Excel: IF(Incurred<=Valuation,0,(1+annual)^(1/4)-1)."""
+    df = df.copy()
+    df[valuation_col] = pd.to_datetime(df[valuation_col], errors='coerce')
+    df[incurred_date_col] = pd.to_datetime(df[incurred_date_col], errors='coerce')
+
+    annual = pd.to_numeric(df[annual_inflation_col], errors='coerce').fillna(0.0)
+    # auto-scale if looks like percent (e.g. 5 for 5%)
+    mask_pct = annual.abs() > 1.0
+    annual.loc[mask_pct] = annual.loc[mask_pct] / 100.0
+    annual = annual.clip(lower=-0.99)
+
+    df[output_col] = 0.0
+    future_mask = df[incurred_date_col].gt(df[valuation_col])
+    df.loc[future_mask, output_col] = (1 + annual.loc[future_mask]) ** (1 / 4) - 1
+
+    return df
+
+
+def generate_inflation_factor_at_bop(
+    df,
+    inflation_ratio_col='Inflation_Ratio',
+    valuation_col='Valuation',
+    incurred_date_col='Incurred',
+    output_col='Inflation_Factor_at_BoP',
+    icg_col='ICG',
+    incurred_seq_col='#Incurred',
+):
+    """Excel: IF(Incurred<=EOMONTH(Valuation,3),100%,Prev*(1+Inflation_Ratio))."""
+    df = df.copy()
+
+    df[valuation_col] = pd.to_datetime(df[valuation_col], errors='coerce')
+    df[incurred_date_col] = pd.to_datetime(df[incurred_date_col], errors='coerce')
+    df[inflation_ratio_col] = pd.to_numeric(df[inflation_ratio_col], errors='coerce').fillna(0.0)
+
+    sort_cols = [icg_col]
+    if incurred_seq_col in df.columns:
+        sort_cols.append(incurred_seq_col)
+    sort_cols.append(incurred_date_col)
+    df = df.sort_values(sort_cols, kind='mergesort')
+
+    df[output_col] = 1.0
+
+    for icg, g in df.groupby(icg_col, sort=False):
+        prev = 1.0
+        for idx, row in g.iterrows():
+            valuation_dt = row[valuation_col]
+            incurred_dt = row[incurred_date_col]
+
+            if pd.isna(valuation_dt) or pd.isna(incurred_dt):
+                val = 0.0
+            else:
+                cutoff = valuation_dt + MonthEnd(3)
+                if incurred_dt <= cutoff:
+                    val = 1.0
+                else:
+                    val = prev * (1 + float(row[inflation_ratio_col]))
+
+            df.loc[idx, output_col] = val
+            prev = val
 
     return df
 
@@ -229,11 +345,12 @@ def generate_exp_commission(
   
 
 def generate_expense_claim(cf_df,
-                               prob_inforce_col='Probability_of_Inforce',
+                               prob_inforce_col='Probability_of_Inforce_at_BoP',
                                earned_premium_col='Earned_Premium',
                                cancel_col='Cancellation_Ratio',
                                ratio_col=None,
-                               exp_claim_col=None,
+                               inflation_factor_col='Inflation_Factor_at_BoP',
+                               inflation_ratio_col='Inflation_Ratio',
                                output_expense_col='Exp_Expense',
                                output_claim_col='Exp_Claim'):
   
@@ -242,21 +359,39 @@ def generate_expense_claim(cf_df,
         prob_inforce_col,
         earned_premium_col,
         cancel_col,
-        ratio_col, 
-        exp_claim_col  
+        ratio_col,
+        'Loss_Ratio',
+        'ULAE_Ratio',
+        inflation_factor_col,
+        inflation_ratio_col,
     ]
     for c in numeric_cols:
-        cf_df[c] = pd.to_numeric(cf_df[c], errors='coerce').fillna(0)
+        if c is not None and c in cf_df.columns:
+            cf_df[c] = pd.to_numeric(cf_df[c], errors='coerce').fillna(0.0)
 
-    # Exp_Claim
+    infl_mult = 1.0
+    if inflation_factor_col in cf_df.columns and inflation_ratio_col in cf_df.columns:
+        infl_mult = cf_df[inflation_factor_col] * (1 + cf_df[inflation_ratio_col])
+
+    # Exp_Claim (updated):
+    # =-PoI_BoP*(1-Cancel)*InflFactor_BoP*(1+InflRatio)*Earned_Premium*Loss_Ratio
     cf_df[output_claim_col] = (
-        -cf_df[prob_inforce_col] * cf_df[earned_premium_col] * (1 - cf_df[cancel_col]) * cf_df['Loss_Ratio'] 
+        -cf_df[prob_inforce_col]
+        * (1 - cf_df[cancel_col])
+        * infl_mult
+        * cf_df[earned_premium_col]
+        * cf_df['Loss_Ratio']
     )
 
-    # Exp_Expense
+    # Exp_Expense (updated):
+    # =-PoI_BoP*(1-Cancel)*InflFactor_BoP*(1+InflRatio)*Earned_Premium*PME_Ratio + ULAE_Ratio*Exp_Claim
     cf_df[output_expense_col] = (
-        -cf_df[prob_inforce_col] * cf_df[earned_premium_col] * (1 - cf_df[cancel_col]) * cf_df[ratio_col] 
-        + cf_df[exp_claim_col] * cf_df['ULAE_Ratio'] 
+        -cf_df[prob_inforce_col]
+        * (1 - cf_df[cancel_col])
+        * infl_mult
+        * cf_df[earned_premium_col]
+        * cf_df[ratio_col]
+        + cf_df['ULAE_Ratio'] * cf_df[output_claim_col]
     )
 
     return cf_df
