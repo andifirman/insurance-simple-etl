@@ -48,13 +48,6 @@ def run_app():
   if start_date.year > end_date.year:
     raise ValueError(f"Start Date ({start_date.date()}) tidak boleh setelah End Date ({end_date.date()}).")
   
-  claim_inflation_percent = float(input("Masukkan inflasi klaim (mis. 5 untuk 5%): "))
-  expense_inflation_percent = float(input("Masukkan inflasi expense (mis. 5 untuk 5%): "))
-  
-  claim_inflation_rate = claim_inflation_percent / 100.0
-  expense_inflation_rate = expense_inflation_percent / 100.0
-  
-  
   locked_current_rate_data = extract_locked_current_rate(all_sheets)
   
   # cf = build_cf_gen(all_sheets)
@@ -62,8 +55,6 @@ def run_app():
     all_sheets, 
     start_date=start_date,
     end_date=end_date,
-    claim_inflation_rate=claim_inflation_rate, 
-    expense_inflation_rate=expense_inflation_rate
   )
   
   out_path = save_cf_gen(cf, dest_folder="data/processed", output_name="CF_Gen.xlsx")

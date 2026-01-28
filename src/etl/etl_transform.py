@@ -17,8 +17,6 @@ def build_cf_gen(
     all_sheets_dict,
     start_date,
     end_date,
-    claim_inflation_rate: float,
-    expense_inflation_rate: float,
 ):
     """Build Cashflow Projection (CF_Gen).
 
@@ -427,7 +425,7 @@ def build_cf_gen(
     #
     # cf = generate_exp_claim_inflation(
     #     cf,
-    #     claim_inflation_rate=claim_inflation_rate,
+    #     claim_inflation_rate=0.0,
     #     incurred_order_col='#Incurred',
     #     base_claim_col='Exp_Claim',
     #     output_col='Exp_Claim_Inflation',
@@ -438,7 +436,7 @@ def build_cf_gen(
     # =============================
     # cf = generate_exp_expense_inflation(
     #     cf,
-    #     expense_inflation_rate=expense_inflation_rate,
+    #     expense_inflation_rate=0.0,
     #     incurred_order_col='#Incurred',
     #     base_claim_col='Exp_Expense',
     #     output_col='Exp_Expense_Inflation',
