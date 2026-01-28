@@ -52,8 +52,8 @@ def build_example_cf_gen() -> pd.DataFrame:
             "Actual_Premium": [0, 0, 0, 0],
             "Actual_Commission": [0, 0, 0, 0],
             "Actual_Acquisition": [0, 0, 0, 0],
-            "Exp_Claim_Inflation": [-300, -280, -260, -240],
-            "Exp_Expense_Inflation": [-95, -90, -102, -96],
+            # "Exp_Claim_Inflation": [-300, -280, -260, -240],
+            # "Exp_Expense_Inflation": [-95, -90, -102, -96],
             "Probability_of_Inforce": [1.0, 0.98, 0.96, 0.94],
             "NPR_Ratio": [0.005, 0.005, 0.005, 0.005],
         }

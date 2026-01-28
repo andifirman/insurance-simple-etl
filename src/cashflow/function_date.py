@@ -27,18 +27,22 @@ def generate_incurred_date(
     df,
     valuation_dt,
     incurred_col='Incurred',
-    output_col='Incurred_Date'
+    output_col='Incurred_Date',
+    base_date=None,
 ):
     """
     Excel equivalent:
     =EOMONTH(DATE(YEAR(Valuation)-1,12,31), Incurred*3)
     """
 
-    base_date = pd.Timestamp(
-        year=valuation_dt.year - 1,
-        month=12,
-        day=31
-    )
+    if base_date is None:
+        base_date = pd.Timestamp(
+            year=valuation_dt.year - 1,
+            month=12,
+            day=31
+        )
+    else:
+        base_date = pd.to_datetime(base_date, dayfirst=True).normalize()
 
     df[output_col] = df[incurred_col].apply(
         lambda x: base_date + MonthEnd(x * 3)

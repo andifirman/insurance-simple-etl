@@ -13,10 +13,21 @@ from src.cashflow.function_date import *
 from src.cashflow.function_cf_generator import *
 
 
-def build_cf_gen(all_sheets_dict, years_forward: int, claim_inflation_rate: float, expense_inflation_rate: float):
-    """
-    Build Cashflow Projection (CF_Gen)
-    years_forward = jumlah tahun ke depan (user input)
+def build_cf_gen(
+    all_sheets_dict,
+    start_date,
+    end_date,
+    claim_inflation_rate: float,
+    expense_inflation_rate: float,
+):
+    """Build Cashflow Projection (CF_Gen).
+
+    Horizon ditentukan dari input user:
+    - Start Date -> dimulai dari Q1 di tahun Start Date
+    - End Date   -> berakhir di Q4 di tahun End Date
+
+    Secara internal, ini diimplementasikan sebagai #Incurred = 1..(N tahun * 4)
+    dengan base date = 31-12 (StartYear-1) dan Incurred = EOMONTH(base, #Incurred*3).
     """
 
     # =============================
@@ -30,6 +41,18 @@ def build_cf_gen(all_sheets_dict, years_forward: int, claim_inflation_rate: floa
         raise ValueError("Sheet 'ValuationDate' tidak ditemukan.")
 
     valuation_date = get_valuation_date(df_valuation)
+
+    start_date = pd.to_datetime(start_date, dayfirst=True).normalize()
+    end_date = pd.to_datetime(end_date, dayfirst=True).normalize()
+    if start_date.year > end_date.year:
+        raise ValueError(
+            f"Start Date ({start_date.date()}) tidak boleh setelah End Date ({end_date.date()})."
+        )
+
+    start_year = int(start_date.year)
+    end_year = int(end_date.year)
+    years_forward = end_year - start_year + 1
+    base_date = pd.Timestamp(year=start_year - 1, month=12, day=31)
 
     # --- Load ICG ---
     df_icg = all_sheets_dict.get('ICG')
@@ -70,7 +93,6 @@ def build_cf_gen(all_sheets_dict, years_forward: int, claim_inflation_rate: floa
     earned_for_horizon = all_sheets_dict.get('Earned')
     if earned_for_horizon is not None and 'Incurred' in earned_for_horizon.columns:
         incurred_dt = pd.to_datetime(earned_for_horizon['Incurred'], errors='coerce')
-        base_date = pd.Timestamp(year=valuation_date.year - 1, month=12, day=31)
         base_period = base_date.to_period('Q')
         incurred_period = incurred_dt.dt.to_period('Q')
 
@@ -81,7 +103,16 @@ def build_cf_gen(all_sheets_dict, years_forward: int, claim_inflation_rate: floa
         max_q = pd.to_numeric(quarter_diff, errors='coerce').max()
         if pd.notna(max_q):
             max_quarters_needed = int(max(0, max_q))
-            years_forward = max(int(years_forward), int(math.ceil(max_quarters_needed / 4)))
+            requested_quarters = int(years_forward) * 4
+            if max_quarters_needed > requested_quarters:
+                required_years = int(math.ceil(max_quarters_needed / 4))
+                years_forward = max(int(years_forward), required_years)
+                end_year = start_year + years_forward - 1
+                print(
+                    "[INFO] End Date diperpanjang otomatis "
+                    f"ke {end_year}-12-31 untuk menutup horizon Earned "
+                    f"(butuh sampai quarter ke-{max_quarters_needed})."
+                )
 
     cf = generate_incurred_sequence(
         cf,
@@ -94,7 +125,8 @@ def build_cf_gen(all_sheets_dict, years_forward: int, claim_inflation_rate: floa
         cf,
         valuation_dt=cf['Valuation'].iloc[0],
         incurred_col='#Incurred',
-        output_col='Incurred'
+        output_col='Incurred',
+        base_date=base_date,
     )
 
     # =============================
@@ -387,26 +419,29 @@ def build_cf_gen(all_sheets_dict, years_forward: int, claim_inflation_rate: floa
             target_col=target_col
         )
         
-  	# =============================
-    # 12. CLAIM INFLATION
     # =============================
-    cf = generate_exp_claim_inflation(
-        cf,
-        claim_inflation_rate=claim_inflation_rate,
-        incurred_order_col='#Incurred',
-        base_claim_col='Exp_Claim',
-        output_col='Exp_Claim_Inflation',
-    )
-    
+    # 12. CLAIM INFLATION (DISABLED)
     # =============================
-    # 13. EXPENSE INFLATION
+    # NOTE: Kolom Exp_Claim_Inflation dan Exp_Expense_Inflation sudah tidak dipakai.
+    # Jangan dihapus dulu biar gampang rollback; cukup un-comment block ini kalau perlu.
+    #
+    # cf = generate_exp_claim_inflation(
+    #     cf,
+    #     claim_inflation_rate=claim_inflation_rate,
+    #     incurred_order_col='#Incurred',
+    #     base_claim_col='Exp_Claim',
+    #     output_col='Exp_Claim_Inflation',
+    # )
+    #
     # =============================
-    cf = generate_exp_expense_inflation(
-        cf,
-        expense_inflation_rate=expense_inflation_rate,
-        incurred_order_col='#Incurred',
-        base_claim_col='Exp_Expense',
-        output_col='Exp_Expense_Inflation',
-    )
+    # 13. EXPENSE INFLATION (DISABLED)
+    # =============================
+    # cf = generate_exp_expense_inflation(
+    #     cf,
+    #     expense_inflation_rate=expense_inflation_rate,
+    #     incurred_order_col='#Incurred',
+    #     base_claim_col='Exp_Expense',
+    #     output_col='Exp_Expense_Inflation',
+    # )
 
     return cf
