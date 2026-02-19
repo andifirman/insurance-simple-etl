@@ -62,8 +62,13 @@ def create_expected_cashflow_template():
 def create_actual_template():
     columns = [
         'Incurred',
-        'Premi',
-        'Komisi',
+        'Actual Premi SOP',
+        'Actual Komisi SOP',
+        'Actual Premi EOP',
+        'Actual Komisi EOP',
+        'Actual Paid Claim',
+        'Actual Paid Expense',
+        'Investment Income',
         'Cohort',
         'LOB',
         'ICG'

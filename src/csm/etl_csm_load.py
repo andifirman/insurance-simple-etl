@@ -29,7 +29,15 @@ def save_csm_gen(csm_dict, output_path):
     # Kolom-kolom yang memerlukan pemisah ribuan dan pembulatan ke bilangan bulat
     columns_to_format = {
         'Expected Cashflow': ['Premi SOP', 'Premi EOP', 'Claim', 'RA', 'Expense', 'Komisi SOP', 'Komisi EOP'],
-        'Actual': ['Premi', 'Komisi']
+        'Actual': [
+            'Actual Premi SOP',
+            'Actual Komisi SOP',
+            'Actual Premi EOP',
+            'Actual Komisi EOP',
+            'Actual Paid Claim',
+            'Actual Paid Expense',
+            'Investment Income',
+        ]
     }
 
     # hanya tambahkan if_sheet_exists saat mode='a'
