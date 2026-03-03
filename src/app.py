@@ -13,6 +13,7 @@ from src.csm.etl_csm_transform import build_csm
 from src.csm.etl_csm_load import save_csm_gen
 
 from src.csm.etl_csm_transform import extract_locked_current_rate
+from src.utils.helper_icg_picker import select_icgs
 
 
 def _prompt_date(prompt: str, default: pd.Timestamp) -> pd.Timestamp:
@@ -27,6 +28,27 @@ def _prompt_date(prompt: str, default: pd.Timestamp) -> pd.Timestamp:
 def run_app():
   input_file = get_input_data()
   all_sheets = load_input_excel(input_file)
+
+  df_icg_sheet = all_sheets.get('ICG')
+  if df_icg_sheet is None or 'ICG' not in df_icg_sheet.columns:
+    raise ValueError("Sheet 'ICG' tidak ditemukan atau kolom 'ICG' tidak ada.")
+
+  icg_choices = df_icg_sheet['ICG'].dropna().astype(str).str.strip().tolist()
+  selected_icgs = select_icgs(icg_choices)
+  if selected_icgs is None:
+    print("ICG selection dibatalkan. Program berhenti.")
+    return
+  if len(selected_icgs) == 0:
+    print("Tidak ada ICG yang dipilih. Program berhenti.")
+    return
+
+  # Filter hanya ICG yang dipilih untuk digenerate
+  all_sheets['ICG'] = df_icg_sheet[df_icg_sheet['ICG'].astype(str).str.strip().isin(set(selected_icgs))].copy()
+
+  for rate_sheet_name in ['Current_Rate', 'Locked_in_Rate']:
+    df_rate = all_sheets.get(rate_sheet_name)
+    if df_rate is not None and 'ICG' in df_rate.columns:
+      all_sheets[rate_sheet_name] = df_rate[df_rate['ICG'].astype(str).str.strip().isin(set(selected_icgs))].copy()
 
   df_valuation = all_sheets.get('ValuationDate')
   if df_valuation is None:

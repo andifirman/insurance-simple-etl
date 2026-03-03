@@ -22,19 +22,37 @@ def normalize_csm_incurred_format(value):
 
 
 def extract_locked_current_rate(all_sheets):
-    # Misalnya data berada di sheet bernama 'InputSheetName'
-    current_rate_sheet = all_sheets['Current_Rate']  # Ganti dengan nama sheet yang sesuai
-    locked_in_rate_sheet = all_sheets['Locked_in_Rate']
-    
-    current_rate = current_rate_sheet['Current_Rate']
-    locked_in_rate = locked_in_rate_sheet['Locked_in_Rate']
-    
-    locked_current_rate_data = {
-        'Current Rate': current_rate,
-        'Locked in Rate': locked_in_rate
+    current_rate_sheet = all_sheets.get('Current_Rate')
+    locked_in_rate_sheet = all_sheets.get('Locked_in_Rate')
+
+    if current_rate_sheet is None or locked_in_rate_sheet is None:
+        raise ValueError("Sheet 'Current_Rate' / 'Locked_in_Rate' tidak ditemukan.")
+
+    for sheet_name, df, needed_cols in [
+        ('Current_Rate', current_rate_sheet, {'ICG', 'Current_Rate'}),
+        ('Locked_in_Rate', locked_in_rate_sheet, {'ICG', 'Locked_in_Rate'}),
+    ]:
+        missing = needed_cols - set(df.columns)
+        if missing:
+            raise ValueError(f"Sheet '{sheet_name}' missing columns: {sorted(missing)}")
+
+    current_map = (
+        current_rate_sheet
+        .dropna(subset=['ICG'])
+        .drop_duplicates(subset=['ICG'])
+        .set_index('ICG')['Current_Rate']
+    )
+    locked_map = (
+        locked_in_rate_sheet
+        .dropna(subset=['ICG'])
+        .drop_duplicates(subset=['ICG'])
+        .set_index('ICG')['Locked_in_Rate']
+    )
+
+    return {
+        'Current Rate': current_map,
+        'Locked in Rate': locked_map,
     }
-    
-    return locked_current_rate_data
 
 def build_csm(all_sheets_dict, locked_current_rate_data):
     csm_expected = create_expected_cashflow_template()
@@ -66,9 +84,17 @@ def build_csm(all_sheets_dict, locked_current_rate_data):
     csm_assumption['ICG'] = all_sheets_dict['ICG']
 
     # ============================================= #
-    # Tambahkan Locked in Rate dan Current Rate ke csm_assumption
-    csm_assumption['Current Rate'] = locked_current_rate_data['Current Rate']
-    csm_assumption['Locked in Rate'] = locked_current_rate_data['Locked in Rate']
+    # Tambahkan Locked in Rate dan Current Rate ke csm_assumption (map by ICG)
+    csm_assumption['Current Rate'] = (
+        csm_assumption['ICG']
+        .map(locked_current_rate_data['Current Rate'])
+        .fillna(0)
+    )
+    csm_assumption['Locked in Rate'] = (
+        csm_assumption['ICG']
+        .map(locked_current_rate_data['Locked in Rate'])
+        .fillna(0)
+    )
 
 		
     csm_expected['Premi SOP'] = generate_premi_sop(csm_expected, all_sheets_dict)
