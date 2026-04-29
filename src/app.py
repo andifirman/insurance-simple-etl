@@ -14,6 +14,11 @@ from src.csm.etl_csm_load import save_csm_gen
 
 from src.csm.etl_csm_transform import extract_locked_current_rate
 from src.utils.helper_icg_picker import select_icgs
+from src.utils.helper_reporting_frequency import (
+  prompt_reporting_frequency,
+  aggregate_cf_for_reporting,
+  aggregate_csm_for_reporting,
+)
 
 
 def _prompt_date(prompt: str, default: pd.Timestamp) -> pd.Timestamp:
@@ -28,6 +33,8 @@ def _prompt_date(prompt: str, default: pd.Timestamp) -> pd.Timestamp:
 def run_app():
   input_file = get_input_data()
   all_sheets = load_input_excel(input_file)
+
+  reporting_freq = prompt_reporting_frequency()
 
   df_icg_sheet = all_sheets.get('ICG')
   if df_icg_sheet is None or 'ICG' not in df_icg_sheet.columns:
@@ -78,8 +85,11 @@ def run_app():
     start_date=start_date,
     end_date=end_date,
   )
+
+  cf_report = aggregate_cf_for_reporting(cf, reporting_freq.key)
   
-  out_path = save_cf_gen(cf, dest_folder="data/processed", output_name="CF_Gen.xlsx")
+  out_path = save_cf_gen(cf_report, dest_folder="data/processed", output_name="CF_Gen.xlsx")
   
   csm_sheets = build_csm(cf, locked_current_rate_data)
+  csm_sheets = aggregate_csm_for_reporting(csm_sheets, reporting_freq.key)
   save_csm_gen(csm_sheets, "data/processed/CSM_Gen.xlsx")
