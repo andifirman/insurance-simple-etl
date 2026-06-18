@@ -54,10 +54,7 @@ def generate_claim(csm_expected, all_sheets_dict):
     icg_values = csm_expected['ICG']
 
     expected_claim = all_sheets_dict['Exp_Claim']
-    # kalau kamu sudah punya kolom Exp_NPR di CF_Gen, pakai ini:
-    # expected_npr = all_sheets_dict['Exp_NPR']
-    # tapi sesuai kode kamu sebelumnya, sementara ini:
-    expected_npr = all_sheets_dict['Actual_Acquisition']
+    expected_npr = all_sheets_dict['Exp_NPR']
     incurred_all_sheets = all_sheets_dict['Incurred']
     icg_all_sheets = all_sheets_dict['ICG']
 
