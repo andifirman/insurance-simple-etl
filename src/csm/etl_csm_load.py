@@ -26,8 +26,7 @@ def save_csm_gen(csm_dict, output_path):
         "mode": "a" if file_exists else "w"
     }
     
-    # Kolom-kolom yang memerlukan pemisah ribuan dan pembulatan ke bilangan bulat
-    columns_to_format = {
+    money_columns_by_sheet = {
         'Expected Cashflow': ['Premi SOP', 'Premi EOP', 'Claim', 'RA', 'Expense', 'Komisi SOP', 'Komisi EOP'],
         'Actual': [
             'Actual Premi SOP',
@@ -47,31 +46,31 @@ def save_csm_gen(csm_dict, output_path):
     with pd.ExcelWriter(**writer_args) as writer:
 
         for sheet_name, df in csm_dict.items():
+            df_to_write = df.copy()
 
-            # Cek apakah sheet_name adalah Expected Cashflow atau Actual
-            if sheet_name in columns_to_format:
-                # Kolom-kolom yang harus diformat di sheet ini
-                columns_to_process = columns_to_format[sheet_name]
-
-                # Pastikan kolom-kolom yang dipilih sudah menjadi numerik dan format ribuan
-                for col in columns_to_process:
-                    if col in df.columns:
-                        # Mengonversi kolom ke numerik jika belum
-                        df[col] = pd.to_numeric(df[col], errors='coerce')
-                        
-                        # Ganti NaN dan inf dengan 0 sebelum mengonversi ke integer
-                        df[col] = df[col].fillna(0)  # Ganti NaN dengan 0
-                        df[col] = df[col].replace([float('inf'), -float('inf')], 0)  # Ganti inf dan -inf dengan 0
-
-                        # Membulatkan angka dan memastikan integer (bilangan bulat)
-                        df[col] = df[col].round(0).astype(int)
-
-                        # Menambahkan pemisah ribuan
-                        df[col] = df[col].apply(lambda x: f"{x:,}")  # Format dengan ribuan separator
+            if sheet_name in money_columns_by_sheet:
+                for col in money_columns_by_sheet[sheet_name]:
+                    if col in df_to_write.columns:
+                        df_to_write[col] = (
+                            pd.to_numeric(df_to_write[col], errors='coerce')
+                            .replace([float('inf'), -float('inf')], 0)
+                        )
 
 
             # Tulis dataframe ke excel
-            df.to_excel(writer, index=False, sheet_name=sheet_name)
+            df_to_write.to_excel(writer, index=False, sheet_name=sheet_name)
+
+            worksheet = writer.sheets[sheet_name]
+
+            for col_idx, col_name in enumerate(df_to_write.columns, start=1):
+                col_letter = get_excel_col_letter(col_idx - 1)
+
+                if sheet_name in money_columns_by_sheet and col_name in money_columns_by_sheet[sheet_name]:
+                    worksheet.column_dimensions[col_letter].width = 18
+                    for row_idx in range(2, len(df_to_write) + 2):
+                        worksheet.cell(row=row_idx, column=col_idx).number_format = '#,##0;(#,##0)'
+                else:
+                    worksheet.column_dimensions[col_letter].width = 15
 
     style_excel_header(output_path)  # Terapkan styling header untuk seluruh sheet
     return output_path
